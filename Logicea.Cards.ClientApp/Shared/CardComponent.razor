@@ -1,0 +1,153 @@
+﻿<div class="card mx-1 my-1" style="background-color:@(Card.Color ?? "#ffffff"); border: 1px solid black;">
+
+    <div class="card-body">
+
+        @if (IsEditing)
+        {
+            <EditForm Model="@Card" OnValidSubmit="@HandleValidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+
+                    <h2><span class="badge bg-secondary">@Card.Name</span></h2>
+
+                    <div class="d-flex gap-2">
+
+                        @if (ShowControls)
+                        {
+                            if (ShowDeleteControl)
+                            {
+                                <button class="btn btn-danger" @onclick="Delete" data-bs-toggle="tooltip" title="Delete Card"><i class="bi bi-trash"></i></button>
+                            }
+
+                            <button type="submit" class="btn btn-primary" data-bs-toggle="tooltip" title="Save Card"><i class="bi bi-save"></i></button>
+                        }
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="mb-1"><strong>Name</strong></label>
+                    <InputText @bind-Value="Card.Name" class="form-control" />
+                    <ValidationMessage For="@(() => Card.Name)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="mb-1"><strong>Description</strong></label>
+                    <InputTextArea @bind-Value="Card.Description" class="form-control" />
+                    <ValidationMessage For="@(() => Card.Description)" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="mb-1"><strong>Color</strong></label>
+                    <InputText @bind-Value="Card.Color" class="form-control" />
+                    <ValidationMessage For="@(() => Card.Color)" />
+                </div>
+
+                <div class="mb-3">
+                    <label for="status" class="form-label"><strong>Status</strong></label>
+                    <select id="status" class="form-select" @bind="Card.Status">
+                        @foreach (CardStatus status in Enum.GetValues(typeof(CardStatus)))
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+            </EditForm>
+        }
+        else
+        {
+            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                <h2><span class="badge bg-secondary">@Card.Name</span></h2>
+
+                <div class="d-flex gap-2">
+
+                    @if (ShowControls)
+                    {
+                        if (ShowDeleteControl)
+                        {
+                            <button class="btn btn-danger" @onclick="Delete" data-bs-toggle="tooltip" title="Delete Card"><i class="bi bi-trash"></i></button>
+                        }
+
+                        <button class="btn btn-primary" @onclick="Edit" data-bs-toggle="tooltip" title="Edit Card"><i class="bi bi-pencil"></i></button>
+                    }
+                </div>
+            </div>
+            <div><strong>Description:</strong> @Card.Description</div>
+            <div><strong>Color:</strong> @Card.Color</div>
+        }
+        <div><strong>Status:</strong> @Card.Status</div>
+        <div><strong>Created By:</strong> @Card.CreatedBy</div>
+        <div><strong>Created Date:</strong> @Card.CreatedDate.ToString("dd/MM/yyyy HH:mm:ss")</div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool IsEditing { get; set; } = false;
+
+    [Parameter]
+    public bool ShowControls { get; set; } = true;
+
+    [Parameter]
+    public bool ShowDeleteControl { get; set; } = true;
+    [Parameter]
+    public Card Card { get; set; } = new Card() { Name = "", CreatedBy = "", UpdatedBy = "" }; // Default to an empty Card to avoid null reference errors
+    
+    [Parameter]
+    public EventCallback<Guid> OnDelete { get; set; }
+
+    [Parameter]
+    public EventCallback<Card> OnUpdate { get; set; }
+
+    [Parameter]
+    public EventCallback<Card> OnCreate { get; set; }
+
+    private async Task Delete()
+    {
+        await Task.Delay(100); // Simulate some delay for the delete operation
+
+        if (OnDelete.HasDelegate)
+        {
+             await OnDelete.InvokeAsync(Card.Id);
+        }
+    }
+
+    private void Edit()
+    {
+        IsEditing = true;
+        Console.WriteLine("On Edit");
+    }
+
+    private async Task Save()
+    {
+        IsEditing = false;
+        
+        await Task.Delay(100); // Simulate some delay for the delete operation
+
+        if (OnUpdate.HasDelegate)
+        {
+            await OnUpdate.InvokeAsync(Card);
+        }         
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        IsEditing = false;
+
+        await Task.Delay(100); // Simulate some delay for the delete operation
+
+        if (OnCreate.HasDelegate)
+        {
+            await OnCreate.InvokeAsync(Card);
+        }
+
+        if (OnUpdate.HasDelegate)
+        {
+            await OnUpdate.InvokeAsync(Card);
+        }
+    }
+
+}

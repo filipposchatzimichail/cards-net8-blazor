@@ -1,0 +1,199 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inject ICardService cardService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+@page "/"
+@attribute [Authorize]
+
+@inject IJSRuntime JS
+
+<PageTitle>Cards</PageTitle>
+
+<div class="container">
+    <div class="row">
+        <h1>Cards</h1>
+    </div>
+</div>
+
+<div class="container">
+    <div class="my-3">
+        @if (isCreatingNew)
+        {
+            <button type="button" class="btn btn-danger close" @onclick="Cancel" aria-label="Cancel" data-bs-toggle="tooltip" title="Cancel">
+              <span aria-hidden="true">&times;</span>
+            </button>            
+
+            <div class="col-4 my-3">
+                <CardComponent Card="newCard" IsEditing=true ShowDeleteControl=false OnCreate="SaveNew"></CardComponent>
+            </div> 
+        }
+        else
+        {            
+            <button class="btn btn-primary" @onclick="CreateNew" data-bs-toggle="tooltip" title="Create New Card"><i class="bi bi-plus-circle"></i></button>
+        }
+    </div>    
+</div>
+
+<div class="container">
+    <div class="mb-3 d-flex flex-wrap gap-3 align-items-center">
+        <label class="form-label me-2 mb-0">Filter by:</label>
+        <input class="form-control w-auto" placeholder="Filter by name"
+               @bind-value="nameFilter" @bind-value:event="oninput" />
+
+        <input class="form-control w-auto" placeholder="Filter by color (e.g. #ff0000)"
+               @bind-value="colorFilter" @bind-value:event="oninput" />
+
+        <select class="form-select w-auto" @bind="statusFilter">
+            <option value="">All Statuses</option>
+            @foreach (var status in Enum.GetValues<CardStatus> ())
+            {
+                <option value="@status.ToString()">@status.ToString()</option>
+            }
+        </select>
+
+        <input class="form-control w-auto" placeholder="Creation Date"
+               @bind-value="creationDateFilter" @bind-value:event="oninput" />
+    </div>
+
+</div>
+
+
+<div class="container">
+    <div class="mb-3 d-flex flex-wrap gap-3 align-items-center">
+        <label class="form-label me-2 mb-0">Sort by:</label>
+        <select class="form-select w-auto" @bind="sortBy">
+            <option value="Name">Name</option>
+            <option value="Color">Color</option>
+            <option value="Status">Status</option>
+            <option value="CreatedDate">Created Date</option>
+        </select>
+
+        <button class="btn btn-outline-secondary"
+                @onclick="ToggleSortDirection">
+            Sort @(sortAscending ? "↑" : "↓")
+        </button>
+    </div>
+</div>
+
+
+
+
+<div class="container">
+    <div class="row">
+        @foreach (var card in filteredCards)
+        {
+            <div class="col-4 my-3">
+                <CardComponent Card="card" OnDelete="DeleteCardAsync" OnUpdate="UpdateCardAsync" />
+            </div>            
+        }
+    </div>
+</div>
+
+
+@code {
+    private List<Card> cards = new();
+    private Card newCard = new Card() { CreatedBy = "", UpdatedBy = "", Name = "" };
+    
+    private bool initialized = false;
+    private bool isCreatingNew = false;
+    private string? userName;
+    private string nameFilter = "";
+    private string colorFilter = "";
+    private string statusFilter = "";
+    private string creationDateFilter = "";
+    private string sortBy = "Name"; // default
+    private bool sortAscending = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            userName = user.Identity.Name;
+        }
+
+        var userCards = (await cardService.GetAllAsync()).Where(c => c.CreatedBy == userName);
+        cards.AddRange(userCards);        
+    }
+
+
+    private async Task<bool> DeleteCardAsync(Guid id)
+    {
+        var result = await cardService.DeleteAsync(id);
+        if (result)
+        {
+            cards = cards.Where(c => c.Id != id).ToList();
+        }
+
+        return result;
+    }
+    private async Task<bool> UpdateCardAsync(Card card)
+    {
+        var result = await cardService.UpdateAsync(card);
+
+        return result;
+    }
+
+    private void CreateNew()
+    {
+        isCreatingNew = true;        
+        newCard = new Card() { CreatedBy = userName, UpdatedBy = userName, Name = "" };
+    }
+
+    private async Task<bool> SaveNew()
+    {
+        isCreatingNew = false;
+        var result = await cardService.AddAsync(newCard);
+        if (result)
+        {
+            cards.Clear();
+            var userCards = (await cardService.GetAllAsync()).Where(c => c.CreatedBy == userName);
+            cards.AddRange(userCards);  
+        }  
+
+        return result;
+    }   
+
+    
+    
+    private IEnumerable<Card> filteredCards
+    {
+        get
+        {
+            var query = cards
+                .Where(card =>
+                    (string.IsNullOrWhiteSpace(nameFilter) || card.Name.Contains(nameFilter, StringComparison.OrdinalIgnoreCase)) &&
+                    (string.IsNullOrWhiteSpace(colorFilter) || card.Color.Contains(colorFilter, StringComparison.OrdinalIgnoreCase)) &&
+                    (string.IsNullOrWhiteSpace(statusFilter) || card.Status.ToString().Equals(statusFilter, StringComparison.OrdinalIgnoreCase)) &&
+                    (string.IsNullOrWhiteSpace(creationDateFilter) || card.CreatedDate.ToString("dd/MM/yyyy").StartsWith(creationDateFilter))
+                );
+
+            query = (sortBy, sortAscending) switch
+            {
+                ("Name", true) => query.OrderBy(c => c.Name),
+                ("Name", false) => query.OrderByDescending(c => c.Name),
+                ("Color", true) => query.OrderBy(c => c.Color),
+                ("Color", false) => query.OrderByDescending(c => c.Color),
+                ("Status", true) => query.OrderBy(c => c.Status.ToString()),
+                ("Status", false) => query.OrderByDescending(c => c.Status.ToString()),
+                ("CreatedDate", true) => query.OrderBy(c => c.CreatedDate),
+                ("CreatedDate", false) => query.OrderByDescending(c => c.CreatedDate),
+                _ => query.OrderBy(c => c.Name)
+            };
+
+            return query;
+        }
+    }
+
+    private void ToggleSortDirection()
+    {
+        sortAscending = !sortAscending;
+    }
+
+    private void Cancel()
+    {
+        isCreatingNew = false;
+    }
+}

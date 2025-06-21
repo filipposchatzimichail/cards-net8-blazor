@@ -1,0 +1,14 @@
+﻿<AuthorizeView>
+    <Authorized>        
+        <a href="Identity/Account/Manage" class="nav-link btn btn-link">
+            <i class="bi bi-person-circle me-1"></i>
+            <span class="ms-1">@context.User.Identity?.Name</span>
+        </a>
+        <form method="post" action="Identity/Account/Logout">
+            <button type="submit" class="nav-link btn btn-link"><i class="bi bi-box-arrow-right"></i></button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <a href="Identity/Account/Login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
