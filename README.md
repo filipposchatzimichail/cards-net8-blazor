@@ -34,3 +34,8 @@ An application named Cards that allows users to create and manage tasks in the f
 * Contents of the description and color fields can be cleared out
 * Available statuses are To Do, In Progress and Done
 * A user can delete a card they have access to
+* Seeded sample data of 6 cards (3 for user1 and 3 for user2)
+  
+
+To create the database just run the following command from the solution folder (assumes dotnet-ef is globally installed)
+`dotnet ef database update --project Logicea.Cards.DataAccess --startup-project Logicea.Cards.AdminApp`
